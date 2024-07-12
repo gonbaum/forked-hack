@@ -1,18 +1,16 @@
-import React from 'react';
+import React, { useState } from 'react';
 
 import { Tabs, Checkbox, Box, Typography } from '@strapi/design-system';
 import { styled } from 'styled-components';
 
-import { Accordion, Flex } from '@strapi/design-system';
+import { Flex } from '@strapi/design-system';
 import { useIntl } from 'react-intl';
 
 import { useUsersPermissions } from '../../contexts/UsersPermissionsContext';
-import formatPluginName from '../../utils/formatPluginName';
 
-import init from './init';
-import PermissionRow from './PermissionRow';
-import { initialState, reducer } from './reducer';
 
+
+// CONSTANTS
 const TAB_LABELS = [
   {
     labelId: '🛑',
@@ -31,6 +29,8 @@ const TAB_LABELS = [
   },
 ];
 
+// STYLES
+
 const BoxWrapper = styled.div`
   display: inline-flex;
   min-width: 100%;
@@ -44,12 +44,23 @@ const Wrapper = styled(Flex)`
 
 // TODO width
 const Cell = styled(Flex)`
-  width: 10px;
+  width: 12rem;
   position: relative;
 `;
 
+const TypesCheckboxFlex = styled(Flex)`
+  width: 10rem; // Adjust this value as needed
+  alignItems: "center";
+  paddingLeft: 6;
+  shrink: 0;
+`;
+
+const rowHeight = 100; // temp
+
+// DATA
+
 const Permissions = () => {
-  const { modifiedData } = useUsersPermissions();
+  const {  modifiedData } = useUsersPermissions();
   const { formatMessage } = useIntl();
 
   // Sort the data from the API into different tabs
@@ -80,9 +91,192 @@ const Permissions = () => {
     }
   );
 
-  const rowHeight = 100; // temp
+  // Collection types data
+  const collectionTypesData = separatedData.collectionTypes.map(({ value }) => {
+    const controllers = value.controllers;
+
+    const subcategories = Object.entries(controllers).map(([subcategoryName, actions]) => {
+      const actionsArray = Object.entries(actions).map(([actionName, actionDetails]) => {
+        return {
+          name: actionName,
+          enabled: actionDetails.enabled,
+        };
+      });
+
+      // Return the new subcategory object
+      return {
+        name: subcategoryName,
+        label: subcategoryName.charAt(0).toUpperCase() + subcategoryName.slice(1),
+        actions: actionsArray,
+      };
+    });
+
+    return subcategories;
+  }).flat();
+
+  const COLLECTION_TYPES_ACTIONS = [];
+
+  collectionTypesData.forEach(subcategory => {
+    subcategory.actions.forEach(action => {
+      if (!COLLECTION_TYPES_ACTIONS.find(a => a.actionId === action.name)) {
+        COLLECTION_TYPES_ACTIONS.push({ label: action.name, actionId: action.name });
+      }
+    });
+  });
+
+  // Single types data
+  const singleTypesData = separatedData.singleTypes.map(({ value }) => {
+    const controllers = value.controllers;
+
+    const subcategories = Object.entries(controllers).map(([subcategoryName, actions]) => {
+      const actionsArray = Object.entries(actions).map(([actionName, actionDetails]) => {
+        return {
+          name: actionName,
+          enabled: actionDetails.enabled,
+        };
+      });
+
+      // Return the new subcategory object
+      return {
+        name: subcategoryName,
+        label: subcategoryName.charAt(0).toUpperCase() + subcategoryName.slice(1),
+        actions: actionsArray,
+      };
+    });
+
+    return subcategories;
+  }).flat();
+
+  const SINGLE_TYPES_ACTIONS = [];
+
+  singleTypesData.forEach(subcategory => {
+    subcategory.actions.forEach(action => {
+      if (!SINGLE_TYPES_ACTIONS.find(a => a.actionId === action.name)) {
+        SINGLE_TYPES_ACTIONS.push({ label: action.name, actionId: action.name });
+      }
+    });
+  });
+
+  // Plugins data
+  const pluginsData = separatedData.plugins.map(({ value }) => {
+    const controllers = value.controllers;
+
+    const subcategories = Object.entries(controllers).map(([subcategoryName, actions]) => {
+      const actionsArray = Object.entries(actions).map(([actionName, actionDetails]) => {
+        return {
+          name: actionName,
+          enabled: actionDetails.enabled,
+        };
+      });
+
+      // Return the new subcategory object
+      return {
+        name: subcategoryName,
+        label: subcategoryName.charAt(0).toUpperCase() + subcategoryName.slice(1),
+        actions: actionsArray,
+      };
+    });
+
+    return subcategories;
+  }).flat();
+
+  const PLUGINS_ACTIONS = [];
+
+  pluginsData.forEach(subcategory => {
+    subcategory.actions.forEach(action => {
+      if (!PLUGINS_ACTIONS.find(a => a.actionId === action.name)) {
+        PLUGINS_ACTIONS.push({ label: action.name, actionId: action.name });
+      }
+    });
+  });
+
+  // LOCAL STATE FOR CHECKBOXES
+
+  const [collectionTypesState, setCollectionTypeState] = useState(collectionTypesData);
+  const [singleTypesState, setSingleTypesState] = useState(singleTypesData);
+  const [pluginsState, setPluginsState] = useState(pluginsData);
+
+  // console.log('singleTypesState', singleTypesState)
+  // console.log('collectionTypesState', collectionTypesState)
+  console.log('pluginsState', pluginsState);
+
+  // Initialize the types data
+  const typesData = {
+    collection: {
+      data: collectionTypesData,
+      state: [collectionTypesState, setCollectionTypeState],
+      actions: COLLECTION_TYPES_ACTIONS,
+    },
+    single: {
+      data: singleTypesData,
+      state: [singleTypesState, setSingleTypesState],
+      actions: SINGLE_TYPES_ACTIONS,
+    },
+    plugin: {
+      data: pluginsData,
+      state: [pluginsState, setPluginsState],
+      actions: PLUGINS_ACTIONS,
+    },
+  };
+
+  // ACTION HANDLERS
+  const handleActionChange = (subcategoryIndex, actionIndex, value, all = false, type) => {
+    const setState = typesData[type].state[1];
+    console.log(subcategoryIndex)
+
+    setState(prevData => {
+      const newData = [...prevData];
+      if (all) {
+        newData[subcategoryIndex].actions.forEach(action => {
+          action.enabled = value;
+        });
+      } else {
+        newData[subcategoryIndex].actions[actionIndex].enabled = value;
+      }
+      return newData;
+    });
+  };
+
+  const handleTypeCheckboxChange = (subcategoryIndex, value, type) => {
+    console.log(subcategoryIndex)
+    handleActionChange(subcategoryIndex, null, value, true, type);
+  };
+
+  const handleHeaderCheckboxChange = (actionName, type) => {
+    const setState = typesData[type].state[1];
+
+    setState(prevData => {
+      const newData = [...prevData];
+      newData.forEach(subcategory => {
+        subcategory.actions.forEach(action => {
+          if (action.name === actionName) {
+            action.enabled = !action.enabled;
+          }
+        });
+      });
+      return newData;
+    });
+  };
+
+  const areAllActionsEnabled = (actionName, type) => {
+    const state = typesData[type].state[0];
+    return state.every(subcategory =>
+      subcategory.actions.every(action =>
+        action.name !== actionName || action.enabled
+      )
+    );
+  };
+
+  // End of handlers
+
+
+  // Returned components
 
   return (
+
+
+  <Box background={'neutral0'}>
+
     <Tabs.Root defaultValue={TAB_LABELS[0].id}>
       <Tabs.List
         aria-label={formatMessage({
@@ -96,36 +290,81 @@ const Permissions = () => {
           </Tabs.Trigger>
         ))}
       </Tabs.List>
+
       <Tabs.Content value={TAB_LABELS[0].id}>
-        {separatedData.collectionTypes.map(({ value }, index) => {
-          const isGrey = index % 2 === 0;
+        {/* headers row */}
+        <Box paddingBottom={4} paddingTop={6} style={{ paddingLeft: `20rem` }} >
+          <Flex gap={0} marginLeft={11} marginRight={10}
+          >
+            {COLLECTION_TYPES_ACTIONS.map(({ label, actionId }) => {
+              return (
+                <Flex
+                  shrink={0}
+                  width={'12rem'} // cells width
+                  direction="column"
+                  alignItems="center"
+                  justifyContent="center"
+                  key={actionId}
+                  gap={3}
+                >
+                  <Typography variant="sigma" textColor="neutral500">
+                    {formatMessage({
+                      id: `Settings.roles.form.permissions.${label.toLowerCase()}`,
+                      defaultMessage: label,
+                    })}
+                  </Typography>
+                  <Checkbox
+                    disabled={false}
+                    onCheckedChange={(value) => { handleHeaderCheckboxChange(actionId, 'collection')}}
+                    name={actionId}
+                    aria-label={formatMessage(
+                      {
+                        id: `Settings.permissions.select-all-by-permission`,
+                        defaultMessage: 'Select all {label} permissions',
+                      },
+                      {
+                        label: formatMessage({
+                          id: `Settings.roles.form.permissions.${label.toLowerCase()}`,
+                          defaultMessage: label,
+                        }),
+                      }
+                    )}
+                    checked={areAllActionsEnabled(actionId, 'collection')}
+                  />
+                </Flex>
+              );
+            })}
+            <Flex
+              shrink={0}
+              width={'15rem'} // adjust this value as needed
+              direction="column"
+              alignItems="center" // This will vertically center the Typography component
+              justifyContent="center"
+              paddingBottom={'3rem'}
+            >
+              <Typography variant="sigma" textColor="neutral500">
+                {formatMessage({
+                  id: `Settings.roles.form.permissions.route`,
+                  defaultMessage: 'Route',
+                })}
+              </Typography>
+            </Flex>
+          </Flex>
+        </Box>
 
-          const checkBoxConfigs = Object.entries(value.controllers)
-            .flatMap(([, actions]) =>
-              Object.entries(actions).map(([actionKey, actionDetails]) => ({
-                name: actionKey,
-                checked: actionDetails.enabled,
-              }))
-            )
-            .sort((a, b) => a.name.localeCompare(b.name));
-
-          const name = Object.keys(value.controllers)[0]
-            .split(' ')
-            .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-            .join(' ');
-
-          // TODO Somewhere we need a stretch flex otuside the fow to align the check boxes
-          // <Flex direction="column" display="inline-flex" alignItems="stretch" minWidth="100%">
+        { /* Types checkboxes */ }
+        {collectionTypesState.map(({ name, label, actions }, subcategoryIndex) => {
+          const isGrey = subcategoryIndex % 2 === 0;
           return (
-            <BoxWrapper>
+            <BoxWrapper key={subcategoryIndex}>
               <Wrapper
                 height={rowHeight}
                 flex={1}
                 alignItems="center"
                 background={isGrey ? 'neutral100' : 'neutral0'}
               >
-                <Flex alignItems="center" paddingLeft={6} shrink={0}>
-                  <Box paddingRight={2}>
+                <Flex alignItems="center" paddingLeft={6} shrink={0} >
+                  <Box paddingRight={2} >
                     <Checkbox
                       name={name}
                       aria-label={formatMessage(
@@ -133,43 +372,28 @@ const Permissions = () => {
                           id: `Settings.permissions.select-all-by-permission`,
                           defaultMessage: 'Select all {label} permissions',
                         },
-                        { label: name }
+                        { label: label }
                       )}
-                      // Keep same signature as packages/core/admin/admin/src/components/Roles/Permissions/index.js l.91
-                      onCheckedChange={(value) => {
-                        console.log('Changed value', value);
-                        // onChange({
-                        //   target: {
-                        //     name: checkboxName,
-                        //     value: !!value,
-                        //   },
-                        // });
-                      }}
-                      // TODO
-                      checked={true}
-                      // checked={someChecked ? 'indeterminate' : value}
+                      onCheckedChange={(value) => handleTypeCheckboxChange(subcategoryIndex, value, 'collection')}
+                      checked={actions.every(action => action.enabled)}
                     />
                   </Box>
-                  <Typography ellipsis>{name}</Typography>
+                  <TypesCheckboxFlex>
+                    <Typography ellipsis>{label}</Typography>
+                  </TypesCheckboxFlex>
                 </Flex>
 
-                <Flex style={{ flex: 1 }}>
-                  {checkBoxConfigs.map(({ name, checked }, index) => {
+                {/* actions checkboxes */ }
+                <Flex style={{ flex: 1, paddingLeft: `11em`}}  alignItems="stretch">
+                  {actions.map(({ name: actionName, enabled }, actionIndex) => {
                     return (
-                      <Cell key={`Action-${index}`} justifyContent="center" alignItems="center">
+                      <Cell key={`Action-${actionIndex}`} justifyContent="center" alignItems="center">
                         <Checkbox
-                          name={name}
-                          // Keep same signature as packages/core/admin/admin/src/components/Roles/Permissions/index.js l.91
+                          name={actionName}
                           onCheckedChange={(value) => {
-                            console.log('onChange', value);
-                            // onChangeSimpleCheckbox({
-                            //   target: {
-                            //     name: checkboxName,
-                            //     value: !!value,
-                            //   },
-                            // });
+                            handleActionChange(subcategoryIndex, actionIndex, value, false,'collection');
                           }}
-                          checked={checked}
+                          checked={enabled}
                         />
                       </Cell>
                     );
@@ -181,24 +405,80 @@ const Permissions = () => {
         })}
       </Tabs.Content>
       <Tabs.Content value={TAB_LABELS[1].id}>
-        {separatedData.singleTypes.map(({ value }, index) => {
-          const isGrey = index % 2 === 0;
-
-          const name = Object.keys(value.controllers)[0]
-            .split(' ')
-            .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-            .join(' ');
-
+        {/* headers row */}
+        <Box paddingBottom={4} paddingTop={6} style={{ paddingLeft: `20rem` }} >
+          <Flex gap={0} marginLeft={11} marginRight={10}
+          >
+            {SINGLE_TYPES_ACTIONS.map(({ label, actionId }) => {
+              return (
+                <Flex
+                  shrink={0}
+                  width={'12rem'} // cells width
+                  direction="column"
+                  alignItems="center"
+                  justifyContent="center"
+                  key={actionId}
+                  gap={3}
+                >
+                  <Typography variant="sigma" textColor="neutral500">
+                    {formatMessage({
+                      id: `Settings.roles.form.permissions.${label.toLowerCase()}`,
+                      defaultMessage: label,
+                    })}
+                  </Typography>
+                  <Checkbox
+                    disabled={false}
+                    onCheckedChange={(value) => { handleHeaderCheckboxChange(actionId, 'single')}}
+                    name={actionId}
+                    aria-label={formatMessage(
+                      {
+                        id: `Settings.permissions.select-all-by-permission`,
+                        defaultMessage: 'Select all {label} permissions',
+                      },
+                      {
+                        label: formatMessage({
+                          id: `Settings.roles.form.permissions.${label.toLowerCase()}`,
+                          defaultMessage: label,
+                        }),
+                      }
+                    )}
+                    checked={areAllActionsEnabled(actionId, 'single')}
+                  />
+                </Flex>
+              );
+            })}
+            <Flex
+              shrink={0}
+              width={'15rem'} // adjust this value as needed
+              direction="column"
+              alignItems="center" // This will vertically center the Typography component
+              justifyContent="center"
+              paddingBottom={'3rem'}
+            >
+              <Typography variant="sigma" textColor="neutral500">
+                {formatMessage({
+                  id: `Settings.roles.form.permissions.route`,
+                  defaultMessage: 'Route',
+                })}
+              </Typography>
+            </Flex>
+          </Flex>
+        </Box>
+        {/* end headers row */}
+        {singleTypesState.map(({ name, label, actions }, subcategoryIndex) => {
+          const isGrey = subcategoryIndex % 2 === 0;
           return (
-            <BoxWrapper>
+            <BoxWrapper key={subcategoryIndex}>
               <Wrapper
                 height={rowHeight}
                 flex={1}
                 alignItems="center"
                 background={isGrey ? 'neutral100' : 'neutral0'}
               >
-                <Flex alignItems="center" paddingLeft={6} shrink={0}>
-                  <Box paddingRight={2}>
+
+                { /* Types checkboxes */ }
+                <Flex alignItems="center" paddingLeft={6} shrink={0} >
+                  <Box paddingRight={2} >
                     <Checkbox
                       name={name}
                       aria-label={formatMessage(
@@ -206,56 +486,113 @@ const Permissions = () => {
                           id: `Settings.permissions.select-all-by-permission`,
                           defaultMessage: 'Select all {label} permissions',
                         },
-                        { label: name }
+                        { label: label }
                       )}
-                      // Keep same signature as packages/core/admin/admin/src/components/Roles/Permissions/index.js l.91
-                      onCheckedChange={(value) => {
-                        console.log('Changed value', value);
-                        // onChange({
-                        //   target: {
-                        //     name: checkboxName,
-                        //     value: !!value,
-                        //   },
-                        // });
-                      }}
-                      // TODO
-                      checked={true}
-                      // checked={someChecked ? 'indeterminate' : value}
+                      onCheckedChange={(value) => handleTypeCheckboxChange(subcategoryIndex, value, 'single')}
+                      checked={actions.every(action => action.enabled)}
                     />
                   </Box>
-                  <Typography ellipsis>{name}</Typography>
+                  <TypesCheckboxFlex>
+                  <Typography ellipsis>{label}</Typography>
+                  </TypesCheckboxFlex>
                 </Flex>
 
-                <Flex style={{ flex: 1 }} />
+                {/* actions checkboxes */ }
+                <Flex style={{ flex: 1, paddingLeft: `11em`}}  alignItems="stretch">
+                  {actions.map(({ name: actionName, enabled }, actionIndex) => {
+                    return (
+                      <Cell key={`Action-${actionIndex}`} justifyContent="center" alignItems="center">
+                        <Checkbox
+                          name={actionName}
+                          onCheckedChange={(value) => {
+                            handleActionChange(subcategoryIndex, actionIndex, value, false,'single');
+                          }}
+                          checked={enabled}
+                        />
+                      </Cell>
+                    );
+                  })}
+                </Flex>
               </Wrapper>
             </BoxWrapper>
           );
         })}
-        {/* <ContentTypes
-          layout={layouts.collectionTypes}
-          kind="collectionTypes"
-          isFormDisabled={isFormDisabled}
-        /> */}
       </Tabs.Content>
       <Tabs.Content value={TAB_LABELS[2].id}>
-        {separatedData.plugins.map(({ value }, index) => {
-          const isGrey = index % 2 === 0;
-
-          const name = Object.keys(value.controllers)[0]
-            .split(' ')
-            .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-            .join(' ');
-
+        {/* headers row */}
+        <Box paddingBottom={4} paddingTop={6} style={{ paddingLeft: `20rem` }} >
+          <Flex gap={0} marginLeft={11} marginRight={10}
+          >
+            {PLUGINS_ACTIONS.map(({ label, actionId }) => {
+              return (
+                <Flex
+                  shrink={0}
+                  width={'12rem'} // cells width
+                  direction="column"
+                  alignItems="center"
+                  justifyContent="center"
+                  key={actionId}
+                  gap={3}
+                >
+                  <Typography variant="sigma" textColor="neutral500">
+                    {formatMessage({
+                      id: `Settings.roles.form.permissions.${label.toLowerCase()}`,
+                      defaultMessage: label,
+                    })}
+                  </Typography>
+                  <Checkbox
+                    disabled={false}
+                    onCheckedChange={(value) => { handleHeaderCheckboxChange(actionId, 'plugin')}}
+                    name={actionId}
+                    aria-label={formatMessage(
+                      {
+                        id: `Settings.permissions.select-all-by-permission`,
+                        defaultMessage: 'Select all {label} permissions',
+                      },
+                      {
+                        label: formatMessage({
+                          id: `Settings.roles.form.permissions.${label.toLowerCase()}`,
+                          defaultMessage: label,
+                        }),
+                      }
+                    )}
+                    checked={areAllActionsEnabled(actionId, 'plugin')}
+                  />
+                </Flex>
+              );
+            })}
+            <Flex
+              shrink={0}
+              width={'15rem'} // adjust this value as needed
+              direction="column"
+              alignItems="center" // This will vertically center the Typography component
+              justifyContent="center"
+              paddingBottom={'3rem'}
+            >
+              <Typography variant="sigma" textColor="neutral500">
+                {formatMessage({
+                  id: `Settings.roles.form.permissions.route`,
+                  defaultMessage: 'Route',
+                })}
+              </Typography>
+            </Flex>
+          </Flex>
+        </Box>
+        {/* end headers row */}
+        {pluginsState.map(({ name, label, actions }, subcategoryIndex) => {
+          const isGrey = subcategoryIndex % 2 === 0;
           return (
-            <BoxWrapper>
+            <BoxWrapper key={subcategoryIndex}>
               <Wrapper
                 height={rowHeight}
                 flex={1}
                 alignItems="center"
                 background={isGrey ? 'neutral100' : 'neutral0'}
               >
-                <Flex alignItems="center" paddingLeft={6} shrink={0}>
-                  <Box paddingRight={2}>
+
+                { /* Types checkboxes */ }
+                <Flex alignItems="center" paddingLeft={6} shrink={0} >
+                  <Box paddingRight={2} >
                     <Checkbox
                       name={name}
                       aria-label={formatMessage(
@@ -263,33 +600,40 @@ const Permissions = () => {
                           id: `Settings.permissions.select-all-by-permission`,
                           defaultMessage: 'Select all {label} permissions',
                         },
-                        { label: name }
+                        { label: label }
                       )}
-                      // Keep same signature as packages/core/admin/admin/src/components/Roles/Permissions/index.js l.91
-                      onCheckedChange={(value) => {
-                        console.log('Changed value', value);
-                        // onChange({
-                        //   target: {
-                        //     name: checkboxName,
-                        //     value: !!value,
-                        //   },
-                        // });
-                      }}
-                      // TODO
-                      checked={true}
-                      // checked={someChecked ? 'indeterminate' : value}
+                      onCheckedChange={(value) => handleTypeCheckboxChange(subcategoryIndex, value, 'plugin')}
+                      checked={actions.every(action => action.enabled)}
                     />
                   </Box>
-                  <Typography ellipsis>{name}</Typography>
+                  <TypesCheckboxFlex>
+                    <Typography ellipsis>{label}</Typography>
+                  </TypesCheckboxFlex>
                 </Flex>
 
-                <Flex style={{ flex: 1 }} />
+                {/* actions checkboxes */ }
+                <Flex style={{ flex: 1, paddingLeft: `11em`}}  alignItems="stretch">
+                  {actions.map(({ name: actionName, enabled }, actionIndex) => {
+                    return (
+                      <Cell key={`Action-${actionIndex}`} justifyContent="center" alignItems="center">
+                        <Checkbox
+                          name={actionName}
+                          onCheckedChange={(value) => {
+                            handleActionChange(subcategoryIndex, actionIndex, value, false,'plugin');
+                          }}
+                          checked={enabled}
+                        />
+                      </Cell>
+                    );
+                  })}
+                </Flex>
               </Wrapper>
             </BoxWrapper>
           );
         })}
       </Tabs.Content>
     </Tabs.Root>
+    </Box>
   );
 };
 

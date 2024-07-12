@@ -222,6 +222,7 @@ const EditPage = () => {
                   onBlur={handleBlur}
                   role={role}
                 />
+                {/* here starts the table */}
                 <Box shadow="filterShadow" hasRadius>
                   <Permissions
                     isFormDisabled={isFormDisabled}

@@ -67,7 +67,7 @@ const GlobalActions = ({ actions = [], isFormDisabled, kind }: GlobalActionsProp
   }, [modifiedData, displayedActions, kind]);
 
   return (
-    <Box paddingBottom={4} paddingTop={6} style={{ paddingLeft: firstRowWidth }}>
+    <Box paddingBottom={4} paddingTop={6} style={{ paddingLeft: firstRowWidth }} >
       <Flex gap={0}>
         {displayedActions.map(({ label, actionId }) => {
           return (
